@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { InstaLayout } from "@/components/insta/Layout";
 import { Stories } from "@/components/insta/Stories";
 import { PostCard } from "@/components/insta/PostCard";
-import { getPosts, getUsers } from "@/lib/insta-data";
+import { fetchFeed } from "@/lib/insta-cloud";
+import { getUsers } from "@/lib/insta-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const posts = getPosts();
+  const { data: posts = [] } = useQuery({ queryKey: ["feed"], queryFn: fetchFeed });
   const suggestions = getUsers().slice(0, 5);
 
   return (
