@@ -70,7 +70,6 @@ export async function fetchFeed(): Promise<CloudPost[]> {
     const { data, error } = await supabase
       .from("posts")
       .select("id, user_id, media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
-      .eq("media_type", "image")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -84,14 +83,24 @@ export async function fetchFeed(): Promise<CloudPost[]> {
       userId: r.user_id,
       username: r.profiles?.username ?? "user",
       avatar: r.profiles?.avatar_url ?? "",
-      image: urls[r.media_url] ?? r.media_url,
+      image: r.media_type === "image" ? (urls[r.media_url] ?? r.media_url) : "",
+      video: r.media_type === "video" ? (urls[r.media_url] ?? r.media_url) : undefined,
       caption: r.caption ?? "",
       likes: 0,
       comments: 0,
       createdAt: r.created_at,
     }));
 
-    return [...cloud, ...getLocalPosts().map(localToCloud)];
+    const merged = [
+      ...cloud,
+      ...getLocalPosts().map(localToCloud),
+      ...getLocalReels().map(localReelToCloud),
+    ];
+    for (let i = merged.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [merged[i], merged[j]] = [merged[j], merged[i]];
+    }
+    return merged;
   } catch (e) {
     console.warn("Cloud feed unavailable, using local seed", e);
     return getLocalPosts().map(localToCloud);
