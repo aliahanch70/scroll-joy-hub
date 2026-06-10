@@ -15,6 +15,8 @@ function UploadPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [lowQualityFile, setLowQualityFile] = useState<File | null>(null);
+  const [lowQualityPreview, setLowQualityPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,19 +32,27 @@ function UploadPage() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  useEffect(() => {
+    if (!lowQualityFile) { setLowQualityPreview(null); return; }
+    const url = URL.createObjectURL(lowQualityFile);
+    setLowQualityPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [lowQualityFile]);
+
   const onPick = (f: File | null) => {
     if (!f) return;
     if (f.size > 50 * 1024 * 1024) { setError("File too large (max 50MB)"); return; }
     if (!f.type.startsWith("image") && !f.type.startsWith("video")) { setError("Only images or videos"); return; }
     setError(null);
     setFile(f);
+    setLowQualityFile(null);
   };
 
   const submit = async () => {
     if (!file || !user) return;
     setBusy(true);
     setError(null);
-    const { error } = await uploadMedia(file, user.id, caption);
+    const { error } = await uploadMedia(file, user.id, caption, lowQualityFile ?? undefined);
     setBusy(false);
     if (error) { setError(error); return; }
     navigate({ to: "/profile" });
@@ -56,7 +66,7 @@ function UploadPage() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-semibold">Create new post</h1>
           {file && (
-            <button onClick={() => setFile(null)} className="p-2 hover:bg-accent rounded-full">
+            <button onClick={() => { setFile(null); setLowQualityFile(null); }} className="p-2 hover:bg-accent rounded-full">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -83,6 +93,34 @@ function UploadPage() {
                 <img src={preview!} alt="preview" className="w-full h-full object-contain" />
               )}
             </div>
+            {isVideo && (
+              <div className="space-y-2">
+                <label className="border border-border rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:bg-card transition">
+                  <span className="text-sm font-semibold">Upload 360p version (optional)</span>
+                  <span className="text-xs text-muted-foreground">Optional low-bandwidth copy for DATA SAVER mode</span>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const low = e.target.files?.[0] ?? null;
+                      if (!low) return;
+                      if (!low.type.startsWith("video")) {
+                        setError("Low-quality upload must be a video.");
+                        return;
+                      }
+                      setError(null);
+                      setLowQualityFile(low);
+                    }}
+                  />
+                </label>
+                {lowQualityPreview && (
+                  <div className="rounded-xl overflow-hidden bg-black h-40">
+                    <video src={lowQualityPreview} className="w-full h-full object-contain" controls />
+                  </div>
+                )}
+              </div>
+            )}
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}

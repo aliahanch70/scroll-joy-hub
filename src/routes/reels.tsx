@@ -19,7 +19,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boolean; onToggleMute: () => void }) {
+function ReelItem({ reel, muted, onToggleMute, dataSaver }: { reel: CloudPost; muted: boolean; onToggleMute: () => void; dataSaver: boolean }) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +75,8 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
     }
   };
 
+  const videoSource = dataSaver ? reel.lowQualityVideo ?? reel.video : reel.video;
+
   const togglePlay = () => {
     const v = videoRef.current; if (!v) return;
     if (v.paused) { v.play(); setPlaying(true); } else { v.pause(); setPlaying(false); }
@@ -82,10 +84,13 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
 
   return (
     <div ref={containerRef} className="snap-start relative h-[calc(100dvh-3.5rem)] md:h-screen w-full flex items-center justify-center bg-black">
-      <div className="relative h-full md:h-[90vh] md:max-h-[900px] aspect-[9/16] max-w-full">
-        <video ref={videoRef} src={reel.video} loop playsInline muted={muted}
+      <div className="relative h-full md:h-[90vh] md:max-h-225 aspect-9/16 max-w-full">
+        <video key={videoSource} ref={videoRef} src={videoSource} loop playsInline muted={muted}
           className={`h-full w-full md:rounded-xl bg-black ${fitCover ? "object-cover" : "object-contain"}`}
           onClick={togglePlay} onDoubleClick={() => setLiked(true)} />
+        <div className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-semibold uppercase tracking-[.2em] px-2 py-1 rounded">
+          {dataSaver ? "360p" : "HD"}
+        </div>
         {!playing && (
           <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Play className="w-16 h-16 text-white/80 drop-shadow-lg" />
@@ -143,17 +148,17 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
             ) : (
               comments.map((comment) => (
                 <div key={comment.id} className="flex gap-2">
-                  <img src={comment.avatar} alt={comment.username} className="w-6 h-6 rounded-full flex-shrink-0" />
+                  <img src={comment.avatar} alt={comment.username} className="w-6 h-6 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <span className="text-white text-xs font-semibold">{comment.username}</span>
-                        <p className="text-white text-xs mt-0.5 break-words">{comment.text}</p>
+                        <p className="text-white text-xs mt-0.5 wrap-break-word">{comment.text}</p>
                       </div>
                       {user?.id === comment.userId && (
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className="text-red-400 hover:text-red-300 text-xs flex-shrink-0"
+                          className="text-red-400 hover:text-red-300 text-xs shrink-0"
                         >
                           Delete
                         </button>
@@ -167,7 +172,7 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
 
           {user && (
             <div className="border-t border-white/20 p-3 flex gap-2">
-              <img src={user.user_metadata?.avatar_url ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=user"} alt="You" className="w-6 h-6 rounded-full flex-shrink-0" />
+              <img src={user.user_metadata?.avatar_url ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=user"} alt="You" className="w-6 h-6 rounded-full shrink-0" />
               <div className="flex-1 flex gap-2">
                 <input
                   type="text"
@@ -196,7 +201,8 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
 function Reels() {
   const [pool, setPool] = useState<CloudPost[]>([]);
   const [items, setItems] = useState<CloudPost[]>([]);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
+  const [dataSaver, setDataSaver] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -208,6 +214,14 @@ function Reels() {
       setItems(shuffled);
     });
     return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    const connection = (navigator as any).connection as { effectiveType?: string } | undefined;
+    if (connection?.effectiveType) {
+      const slowConnection = ["slow-2g", "2g", "3g"].includes(connection.effectiveType);
+      if (slowConnection) setDataSaver(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -228,9 +242,16 @@ function Reels() {
 
   return (
     <InstaLayout>
+          {/* <button
+            onClick={() => setDataSaver((v) => !v)}
+            className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${dataSaver ? "border-sky-500 bg-sky-500/10 text-sky-500" : "border-border bg-transparent text-foreground"}`}
+          >
+            DATA SAVER {dataSaver ? "ON" : "OFF"}
+          </button>
+  */}
       <div ref={scrollerRef} className="snap-y-mandatory overflow-y-scroll scrollbar-none h-[calc(100dvh-3.5rem-3.5rem)] md:h-screen">
         {items.map((r) => (
-          <ReelItem key={r.id} reel={r} muted={muted} onToggleMute={() => setMuted((v) => !v)} />
+          <ReelItem key={r.id} reel={r} muted={muted} onToggleMute={() => setMuted((v) => !v)} dataSaver={dataSaver} />
         ))}
       </div>
     </InstaLayout>

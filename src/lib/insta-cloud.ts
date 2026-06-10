@@ -12,6 +12,7 @@ export type CloudPost = {
   avatar: string;
   image: string;            // for image posts; for videos this is a poster (empty -> uses video frame)
   video?: string;           // present when media_type = 'video'
+  lowQualityVideo?: string; // optional reduced-quality video source
   caption: string;
   likes: number;
   comments: number;
@@ -57,6 +58,7 @@ function localReelToCloud(r: Reel): CloudPost {
     avatar: u?.avatar ?? "",
     image: "",
     video: r.video,
+    lowQualityVideo: r.video,
     caption: r.caption,
     likes: r.likes,
     comments: r.comments,
@@ -69,14 +71,14 @@ export async function fetchFeed(): Promise<CloudPost[]> {
   try {
     const { data, error } = await supabase
       .from("posts")
-      .select("id, user_id, media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
+      .select("id, user_id, media_url, low_quality_media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (error) throw error;
 
-    const paths = (data ?? []).map((r) => r.media_url);
-    const urls = await resolvePaths(paths);
+    const paths = (data ?? []).flatMap((r) => [r.media_url, r.low_quality_media_url].filter(Boolean));
+    const urls = await resolvePaths(paths as string[]);
 
     const cloud: CloudPost[] = (data ?? []).map((r: any) => ({
       id: r.id,
@@ -85,6 +87,7 @@ export async function fetchFeed(): Promise<CloudPost[]> {
       avatar: r.profiles?.avatar_url ?? "",
       image: r.media_type === "image" ? (urls[r.media_url] ?? r.media_url) : "",
       video: r.media_type === "video" ? (urls[r.media_url] ?? r.media_url) : undefined,
+      lowQualityVideo: r.media_type === "video" ? (urls[r.low_quality_media_url] ?? urls[r.media_url] ?? r.media_url) : undefined,
       caption: r.caption ?? "",
       likes: 0,
       comments: 0,
@@ -111,14 +114,14 @@ export async function fetchReels(): Promise<CloudPost[]> {
   try {
     const { data, error } = await supabase
       .from("posts")
-      .select("id, user_id, media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
+      .select("id, user_id, media_url, low_quality_media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
       .eq("media_type", "video")
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) throw error;
 
-    const paths = (data ?? []).map((r) => r.media_url);
-    const urls = await resolvePaths(paths);
+    const paths = (data ?? []).flatMap((r) => [r.media_url, r.low_quality_media_url].filter(Boolean));
+    const urls = await resolvePaths(paths as string[]);
 
     const cloud: CloudPost[] = (data ?? []).map((r: any) => ({
       id: r.id,
@@ -127,6 +130,7 @@ export async function fetchReels(): Promise<CloudPost[]> {
       avatar: r.profiles?.avatar_url ?? "",
       image: "",
       video: urls[r.media_url] ?? r.media_url,
+      lowQualityVideo: urls[r.low_quality_media_url] ?? urls[r.media_url] ?? r.media_url,
       caption: r.caption ?? "",
       likes: 0,
       comments: 0,
@@ -144,13 +148,13 @@ export async function fetchUserPosts(userId: string): Promise<CloudPost[]> {
   try {
     const { data, error } = await supabase
       .from("posts")
-      .select("id, user_id, media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
+      .select("id, user_id, media_url, low_quality_media_url, media_type, caption, created_at, profiles!inner(username, avatar_url)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (error) throw error;
 
-    const paths = (data ?? []).map((r) => r.media_url);
-    const urls = await resolvePaths(paths);
+    const paths = (data ?? []).flatMap((r) => [r.media_url, r.low_quality_media_url].filter(Boolean));
+    const urls = await resolvePaths(paths as string[]);
 
     return (data ?? []).map((r: any) => ({
       id: r.id,
@@ -159,6 +163,7 @@ export async function fetchUserPosts(userId: string): Promise<CloudPost[]> {
       avatar: r.profiles?.avatar_url ?? "",
       image: r.media_type === "image" ? (urls[r.media_url] ?? r.media_url) : "",
       video: r.media_type === "video" ? (urls[r.media_url] ?? r.media_url) : undefined,
+      lowQualityVideo: r.media_type === "video" ? (urls[r.low_quality_media_url] ?? urls[r.media_url] ?? r.media_url) : undefined,
       caption: r.caption ?? "",
       likes: 0,
       comments: 0,
@@ -170,7 +175,7 @@ export async function fetchUserPosts(userId: string): Promise<CloudPost[]> {
   }
 }
 
-export async function uploadMedia(file: File, userId: string, caption: string): Promise<{ error: string | null }> {
+export async function uploadMedia(file: File, userId: string, caption: string, lowQualityFile?: File): Promise<{ error: string | null }> {
   try {
     const isVideo = file.type.startsWith("video");
     const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
@@ -182,9 +187,24 @@ export async function uploadMedia(file: File, userId: string, caption: string): 
     });
     if (upErr) return { error: upErr.message };
 
+    let lowQualityPath: string | null = null;
+    if (isVideo && lowQualityFile) {
+      if (!lowQualityFile.type.startsWith("video")) {
+        return { error: "Low quality file must be a video." };
+      }
+      const lowExt = lowQualityFile.name.split(".").pop() || "mp4";
+      lowQualityPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-360p.${lowExt}`;
+      const { error: lowErr } = await supabase.storage.from("media").upload(lowQualityPath, lowQualityFile, {
+        contentType: lowQualityFile.type,
+        upsert: false,
+      });
+      if (lowErr) return { error: lowErr.message };
+    }
+
     const { error: insErr } = await supabase.from("posts").insert({
       user_id: userId,
       media_url: path,
+      low_quality_media_url: lowQualityPath,
       media_type: isVideo ? "video" : "image",
       caption: caption.trim() || null,
     });
