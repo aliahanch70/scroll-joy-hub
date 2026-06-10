@@ -268,7 +268,7 @@ export async function addComment(postId: string, userId: string, text: string): 
 
 export async function deleteComment(commentId: string): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    const { error } = await (supabase as any).from("comments").delete().eq("id", commentId);
     if (error) return { error: error.message };
     return { error: null };
   } catch (e) {
