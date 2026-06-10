@@ -230,7 +230,7 @@ export type Comment = {
 
 export async function fetchComments(postId: string): Promise<Comment[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("comments")
       .select("id, post_id, user_id, text, created_at, profiles!inner(username, avatar_url)")
       .eq("post_id", postId)
@@ -254,7 +254,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
 
 export async function addComment(postId: string, userId: string, text: string): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.from("comments").insert({
+    const { error } = await (supabase as any).from("comments").insert({
       post_id: postId,
       user_id: userId,
       text: text.trim(),
@@ -268,7 +268,7 @@ export async function addComment(postId: string, userId: string, text: string): 
 
 export async function deleteComment(commentId: string): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    const { error } = await (supabase as any).from("comments").delete().eq("id", commentId);
     if (error) return { error: error.message };
     return { error: null };
   } catch (e) {
