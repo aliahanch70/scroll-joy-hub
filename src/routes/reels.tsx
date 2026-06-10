@@ -23,6 +23,7 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
   const containerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [fitCover, setFitCover] = useState(false);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -49,16 +50,21 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
     <div ref={containerRef} className="snap-start relative h-[calc(100dvh-3.5rem)] md:h-screen w-full flex items-center justify-center bg-black">
       <div className="relative h-full md:h-[90vh] md:max-h-[900px] aspect-[9/16] max-w-full">
         <video ref={videoRef} src={reel.video} loop playsInline muted={muted}
-          className="h-full w-full object-cover md:rounded-xl bg-black"
+          className={`h-full w-full md:rounded-xl bg-black ${fitCover ? "object-cover" : "object-contain"}`}
           onClick={togglePlay} onDoubleClick={() => setLiked(true)} />
         {!playing && (
           <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Play className="w-16 h-16 text-white/80 drop-shadow-lg" />
           </button>
         )}
-        <button onClick={onToggleMute} className="absolute top-3 right-3 bg-black/40 rounded-full p-2" aria-label="mute toggle">
-          {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
-        </button>
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button onClick={() => setFitCover((v) => !v)} className="bg-black/40 rounded-full p-2" aria-label="fit toggle">
+            {fitCover ? <Minimize2 className="w-4 h-4 text-white" /> : <Maximize2 className="w-4 h-4 text-white" />}
+          </button>
+          <button onClick={onToggleMute} className="bg-black/40 rounded-full p-2" aria-label="mute toggle">
+            {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
+          </button>
+        </div>
         <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 text-white">
           <button onClick={() => setLiked((v) => !v)} className="flex flex-col items-center">
             <Heart className={`w-7 h-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />
