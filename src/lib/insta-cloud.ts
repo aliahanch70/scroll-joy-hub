@@ -254,7 +254,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
 
 export async function addComment(postId: string, userId: string, text: string): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.from("comments").insert({
+    const { error } = await (supabase as any).from("comments").insert({
       post_id: postId,
       user_id: userId,
       text: text.trim(),
