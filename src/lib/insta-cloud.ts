@@ -230,7 +230,7 @@ export type Comment = {
 
 export async function fetchComments(postId: string): Promise<Comment[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("comments")
       .select("id, post_id, user_id, text, created_at, profiles!inner(username, avatar_url)")
       .eq("post_id", postId)
