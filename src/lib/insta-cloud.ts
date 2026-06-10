@@ -271,6 +271,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
 
 
 export async function addComment(postId: string, userId: string, text: string): Promise<{ error: string | null }> {
+  if (!isUuid(postId)) return { error: "Cannot comment on demo posts. Upload your own to enable comments." };
   try {
     const { error } = await (supabase as any).from("comments").insert({
       post_id: postId,
