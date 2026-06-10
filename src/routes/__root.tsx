@@ -78,14 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "INSTA" },
+      { name: "description", content: "InstaLite Companion is a web application that replicates Instagram's core features for users." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "INSTA" },
+      { property: "og:description", content: "InstaLite Companion is a web application that replicates Instagram's core features for users." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "INSTA" },
+      { name: "twitter:description", content: "InstaLite Companion is a web application that replicates Instagram's core features for users." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2a032c50-4a53-4296-9cc0-e816e1a8077d/id-preview-e9149e66--5ffcc748-10bd-45ef-923c-d8300540b628.lovable.app-1781083072327.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2a032c50-4a53-4296-9cc0-e816e1a8077d/id-preview-e9149e66--5ffcc748-10bd-45ef-923c-d8300540b628.lovable.app-1781083072327.png" },
     ],
     links: [
       {
