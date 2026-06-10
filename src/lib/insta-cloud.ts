@@ -194,3 +194,84 @@ export async function uploadMedia(file: File, userId: string, caption: string): 
     return { error: e instanceof Error ? e.message : "Upload failed" };
   }
 }
+
+export async function deletePost(postId: string): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from("posts").delete().eq("id", postId);
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Delete failed" };
+  }
+}
+
+export async function updatePost(postId: string, caption: string): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase
+      .from("posts")
+      .update({ caption: caption.trim() || null })
+      .eq("id", postId);
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Update failed" };
+  }
+}
+
+export type Comment = {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  avatar: string;
+  text: string;
+  createdAt: string;
+};
+
+export async function fetchComments(postId: string): Promise<Comment[]> {
+  try {
+    const { data, error } = await supabase
+      .from("comments")
+      .select("id, post_id, user_id, text, created_at, profiles!inner(username, avatar_url)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+
+    return (data ?? []).map((c: any) => ({
+      id: c.id,
+      postId: c.post_id,
+      userId: c.user_id,
+      username: c.profiles?.username ?? "user",
+      avatar: c.profiles?.avatar_url ?? "",
+      text: c.text,
+      createdAt: c.created_at,
+    }));
+  } catch (e) {
+    console.warn("Failed to fetch comments", e);
+    return [];
+  }
+}
+
+export async function addComment(postId: string, userId: string, text: string): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from("comments").insert({
+      post_id: postId,
+      user_id: userId,
+      text: text.trim(),
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Comment failed" };
+  }
+}
+
+export async function deleteComment(commentId: string): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Delete failed" };
+  }
+}

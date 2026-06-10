@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { InstaLayout } from "@/components/insta/Layout";
 import { useAuth } from "@/lib/auth-context";
-import { fetchUserPosts } from "@/lib/insta-cloud";
+import { fetchUserPosts, deletePost, updatePost } from "@/lib/insta-cloud";
 import { getMe, getPostsByUser } from "@/lib/insta-data";
-import { Grid3x3, Bookmark, UserSquare2, Play, LogIn } from "lucide-react";
+import { Grid3x3, Bookmark, UserSquare2, Play, LogIn, Trash2, Edit2, X } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/profile")({
@@ -15,12 +15,41 @@ export const Route = createFileRoute("/profile")({
 function Profile() {
   const { user, profile, signOut } = useAuth();
   const [tab, setTab] = useState<"posts" | "saved" | "tagged">("posts");
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editCaption, setEditCaption] = useState<string>("");
+  const queryClient = useQueryClient();
 
-  const { data: cloudPosts = [] } = useQuery({
+  const { data: cloudPosts = [], refetch } = useQuery({
     queryKey: ["user-posts", user?.id],
     queryFn: () => (user ? fetchUserPosts(user.id) : Promise.resolve([])),
     enabled: !!user,
   });
+
+  const handleDeletePost = async (postId: string) => {
+    if (confirm("Are you sure you want to delete this post?")) {
+      const result = await deletePost(postId);
+      if (!result.error) {
+        refetch();
+      } else {
+        alert("Error deleting post: " + result.error);
+      }
+    }
+  };
+
+  const handleEditPost = (postId: string, currentCaption: string) => {
+    setEditingPostId(postId);
+    setEditCaption(currentCaption);
+  };
+
+  const handleSaveEdit = async (postId: string) => {
+    const result = await updatePost(postId, editCaption);
+    if (!result.error) {
+      setEditingPostId(null);
+      refetch();
+    } else {
+      alert("Error updating post: " + result.error);
+    }
+  };
 
   // Guest view: show the local demo profile
   if (!user) {
@@ -94,7 +123,22 @@ function Profile() {
               </Link>
             </div>
           ) : (
-            <Grid items={cloudPosts.map((p) => ({ id: p.id, image: p.image, video: p.video }))} />
+            <Grid 
+              items={cloudPosts.map((p) => ({ 
+                id: p.id, 
+                image: p.image, 
+                video: p.video,
+                caption: p.caption 
+              }))}
+              isUserProfile={true}
+              onDelete={handleDeletePost}
+              onEdit={handleEditPost}
+              editingPostId={editingPostId}
+              editCaption={editCaption}
+              onEditCaptionChange={setEditCaption}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={() => setEditingPostId(null)}
+            />
           )
         ) : (
           <div className="text-center py-20 text-muted-foreground text-sm">Nothing here yet.</div>
@@ -159,18 +203,86 @@ function ProfileHeader({
   );
 }
 
-function Grid({ items }: { items: { id: string; image: string; video?: string }[] }) {
+function Grid({ 
+  items, 
+  isUserProfile = false,
+  onDelete,
+  onEdit,
+  editingPostId,
+  editCaption,
+  onEditCaptionChange,
+  onSaveEdit,
+  onCancelEdit,
+}: { 
+  items: { id: string; image: string; video?: string; caption?: string }[];
+  isUserProfile?: boolean;
+  onDelete?: (id: string) => void;
+  onEdit?: (id: string, caption: string) => void;
+  editingPostId?: string | null;
+  editCaption?: string;
+  onEditCaptionChange?: (caption: string) => void;
+  onSaveEdit?: (id: string) => void;
+  onCancelEdit?: () => void;
+}) {
   return (
     <div className="grid grid-cols-3 gap-1 md:gap-2 mt-1">
       {items.map((it) => (
-        <div key={it.id} className="aspect-square bg-muted overflow-hidden relative">
-          {it.video ? (
-            <>
-              <video src={it.video} className="w-full h-full object-cover" muted playsInline preload="metadata" />
-              <Play className="absolute top-2 right-2 w-4 h-4 text-white drop-shadow" fill="currentColor" />
-            </>
-          ) : (
-            <img src={it.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+        <div key={it.id} className="relative group">
+          <div className="aspect-square bg-muted overflow-hidden rounded relative">
+            {it.video ? (
+              <>
+                <video src={it.video} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                <Play className="absolute top-2 right-2 w-4 h-4 text-white drop-shadow" fill="currentColor" />
+              </>
+            ) : (
+              <img src={it.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+            )}
+          </div>
+          {isUserProfile && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 rounded flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+              <button
+                onClick={() => onEdit?.(it.id, it.caption || "")}
+                className="bg-white text-black hover:bg-gray-200 rounded-full p-2 transition-colors"
+                title="Edit post"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onDelete?.(it.id)}
+                className="bg-red-500 text-white hover:bg-red-600 rounded-full p-2 transition-colors"
+                title="Delete post"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {editingPostId === it.id && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-card rounded-lg p-6 max-w-md w-full">
+                <h3 className="text-lg font-semibold mb-4">Edit Caption</h3>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => onEditCaptionChange?.(e.target.value)}
+                  className="w-full border border-border rounded-md p-3 mb-4 bg-background text-foreground resize-none"
+                  rows={4}
+                  placeholder="Write a caption..."
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => editingPostId && onSaveEdit?.(editingPostId)}
+                    className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-md text-sm font-semibold"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={onCancelEdit}
+                    className="bg-secondary text-secondary-foreground px-4 py-2 rounded-md text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       ))}

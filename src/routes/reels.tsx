@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InstaLayout } from "@/components/insta/Layout";
-import { fetchReels, type CloudPost } from "@/lib/insta-cloud";
-import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX, Maximize2, Minimize2 } from "lucide-react";
+import { fetchReels, type CloudPost, fetchComments, addComment, deleteComment, type Comment } from "@/lib/insta-cloud";
+import { useAuth } from "@/lib/auth-context";
+import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX, Maximize2, Minimize2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/reels")({
@@ -19,11 +20,16 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boolean; onToggleMute: () => void }) {
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [liked, setLiked] = useState(false);
   const [fitCover, setFitCover] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -40,6 +46,34 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  const loadComments = async () => {
+    setLoadingComments(true);
+    const loaded = await fetchComments(reel.id);
+    setComments(loaded);
+    setLoadingComments(false);
+  };
+
+  const handleAddComment = async () => {
+    if (!user || !commentText.trim()) return;
+    
+    const result = await addComment(reel.id, user.id, commentText);
+    if (!result.error) {
+      setCommentText("");
+      await loadComments();
+    } else {
+      alert("Error adding comment: " + result.error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const result = await deleteComment(commentId);
+    if (!result.error) {
+      await loadComments();
+    } else {
+      alert("Error deleting comment: " + result.error);
+    }
+  };
 
   const togglePlay = () => {
     const v = videoRef.current; if (!v) return;
@@ -70,9 +104,9 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
             <Heart className={`w-7 h-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />
             <span className="text-xs mt-1">{(reel.likes + (liked ? 1 : 0)).toLocaleString()}</span>
           </button>
-          <button className="flex flex-col items-center">
+          <button onClick={() => { if (!showComments) loadComments(); setShowComments(!showComments); }} className="flex flex-col items-center">
             <MessageCircle className="w-7 h-7" />
-            <span className="text-xs mt-1">{reel.comments}</span>
+            <span className="text-xs mt-1">{comments.length}</span>
           </button>
           <Send className="w-7 h-7" />
           <MoreHorizontal className="w-7 h-7" />
@@ -91,6 +125,70 @@ function ReelItem({ reel, muted, onToggleMute }: { reel: CloudPost; muted: boole
           </div>
         </div>
       </div>
+
+      {showComments && (
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-black/90 backdrop-blur rounded-t-2xl flex flex-col border-t border-white/20">
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <h3 className="text-white font-semibold">Comments ({comments.length})</h3>
+            <button onClick={() => setShowComments(false)} className="text-white hover:text-gray-300">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {loadingComments ? (
+              <div className="text-center text-gray-400 text-sm">Loading comments...</div>
+            ) : comments.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm">No comments yet. Be the first to comment!</div>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="flex gap-2">
+                  <img src={comment.avatar} alt={comment.username} className="w-6 h-6 rounded-full flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white text-xs font-semibold">{comment.username}</span>
+                        <p className="text-white text-xs mt-0.5 break-words">{comment.text}</p>
+                      </div>
+                      {user?.id === comment.userId && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-red-400 hover:text-red-300 text-xs flex-shrink-0"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {user && (
+            <div className="border-t border-white/20 p-3 flex gap-2">
+              <img src={user.user_metadata?.avatar_url ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=user"} alt="You" className="w-6 h-6 rounded-full flex-shrink-0" />
+              <div className="flex-1 flex gap-2">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleAddComment()}
+                  placeholder="Add a comment..."
+                  className="flex-1 bg-white/10 text-white text-xs rounded px-3 py-1.5 placeholder-gray-400 outline-none focus:bg-white/20"
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={!commentText.trim()}
+                  className="text-sky-400 hover:text-sky-300 disabled:opacity-50 font-semibold text-xs"
+                >
+                  Post
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
