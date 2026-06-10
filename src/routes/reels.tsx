@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { InstaLayout } from "@/components/insta/Layout";
 import { fetchReels, type CloudPost } from "@/lib/insta-cloud";
-import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/reels")({
