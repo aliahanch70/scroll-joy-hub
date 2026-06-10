@@ -228,21 +228,38 @@ export type Comment = {
   createdAt: string;
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (s: string) => UUID_RE.test(s);
+
 export async function fetchComments(postId: string): Promise<Comment[]> {
+  if (!isUuid(postId)) return [];
   try {
     const { data, error } = await (supabase as any)
       .from("comments")
-      .select("id, post_id, user_id, text, created_at, profiles!inner(username, avatar_url)")
+      .select("id, post_id, user_id, text, created_at")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
     if (error) throw error;
 
-    return (data ?? []).map((c: any) => ({
+    const rows = (data ?? []) as any[];
+    const userIds = Array.from(new Set(rows.map((c) => c.user_id)));
+    let profiles: Record<string, { username: string; avatar_url: string | null }> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url")
+        .in("id", userIds);
+      for (const p of profs ?? []) {
+        profiles[p.id] = { username: p.username, avatar_url: p.avatar_url };
+      }
+    }
+
+    return rows.map((c: any) => ({
       id: c.id,
       postId: c.post_id,
       userId: c.user_id,
-      username: c.profiles?.username ?? "user",
-      avatar: c.profiles?.avatar_url ?? "",
+      username: profiles[c.user_id]?.username ?? "user",
+      avatar: profiles[c.user_id]?.avatar_url ?? "",
       text: c.text,
       createdAt: c.created_at,
     }));
@@ -252,7 +269,9 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
   }
 }
 
+
 export async function addComment(postId: string, userId: string, text: string): Promise<{ error: string | null }> {
+  if (!isUuid(postId)) return { error: "Cannot comment on demo posts. Upload your own to enable comments." };
   try {
     const { error } = await (supabase as any).from("comments").insert({
       post_id: postId,
