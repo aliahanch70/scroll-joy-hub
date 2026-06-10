@@ -22,13 +22,25 @@ export function PostCard({ post }: { post: CloudPost }) {
       </header>
 
       <div className="aspect-square bg-muted overflow-hidden">
-        <img
-          src={post.image}
-          alt={post.caption}
-          className="w-full h-full object-cover"
-          onDoubleClick={() => setLiked(true)}
-          loading="lazy"
-        />
+        {post.video ? (
+          <video
+            src={post.video}
+            className="w-full h-full object-cover"
+            controls
+            loop
+            playsInline
+            muted
+            onDoubleClick={() => setLiked(true)}
+          />
+        ) : (
+          <img
+            src={post.image}
+            alt={post.caption}
+            className="w-full h-full object-cover"
+            onDoubleClick={() => setLiked(true)}
+            loading="lazy"
+          />
+        )}
       </div>
 
       <div className="p-3">
