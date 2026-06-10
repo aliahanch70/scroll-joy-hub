@@ -24,7 +24,11 @@ function Explore() {
           {posts.map((p, i) => (
             <a key={p.id} href="#"
               className={`relative bg-muted overflow-hidden ${i % 7 === 3 ? "row-span-2 col-span-1 aspect-[1/2]" : "aspect-square"}`}>
-              <img src={p.image} alt={p.caption} loading="lazy" className="w-full h-full object-cover hover:opacity-90 transition" />
+              {p.video ? (
+                <video src={p.video} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+              ) : (
+                <img src={p.image} alt={p.caption} loading="lazy" className="w-full h-full object-cover hover:opacity-90 transition" />
+              )}
             </a>
           ))}
         </div>
