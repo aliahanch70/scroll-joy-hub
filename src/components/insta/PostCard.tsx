@@ -1,10 +1,43 @@
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Volume2, VolumeX, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { CloudPost } from "@/lib/insta-cloud";
 
 export function PostCard({ post }: { post: CloudPost }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [playing, setPlaying] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Autoplay when in view, pause when out — Instagram-style
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+          v.play().then(() => setPlaying(true)).catch(() => {});
+        } else {
+          v.pause();
+          setPlaying(false);
+        }
+      },
+      { threshold: [0, 0.6, 1] }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().then(() => setPlaying(true)).catch(() => {});
+    } else {
+      v.pause();
+      setPlaying(false);
+    }
+  };
 
   return (
     <article className="border-b border-border md:border md:rounded-lg md:mb-6 bg-card">
@@ -21,17 +54,46 @@ export function PostCard({ post }: { post: CloudPost }) {
         <MoreHorizontal className="w-5 h-5" />
       </header>
 
-      <div className="aspect-square bg-muted overflow-hidden">
+      <div className="relative aspect-square bg-muted overflow-hidden">
         {post.video ? (
-          <video
-            src={post.video}
-            className="w-full h-full object-cover"
-            controls
-            loop
-            playsInline
-            muted
-            onDoubleClick={() => setLiked(true)}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={post.video}
+              className="w-full h-full object-contain bg-black"
+              loop
+              playsInline
+              muted={muted}
+              preload="metadata"
+              onClick={togglePlay}
+              onDoubleClick={() => setLiked(true)}
+            />
+            {!playing && (
+              <button
+                onClick={togglePlay}
+                className="absolute inset-0 flex items-center justify-center"
+                aria-label="play"
+              >
+                <span className="bg-black/50 rounded-full p-4">
+                  <Play className="w-8 h-8 text-white fill-white" />
+                </span>
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMuted((m) => !m);
+              }}
+              className="absolute bottom-3 right-3 bg-black/60 hover:bg-black/70 rounded-full p-2"
+              aria-label={muted ? "unmute" : "mute"}
+            >
+              {muted ? (
+                <VolumeX className="w-4 h-4 text-white" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-white" />
+              )}
+            </button>
+          </>
         ) : (
           <img
             src={post.image}
