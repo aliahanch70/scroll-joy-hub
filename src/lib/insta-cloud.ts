@@ -133,10 +133,10 @@ export async function fetchReels(): Promise<CloudPost[]> {
       createdAt: r.created_at,
     }));
 
-    return [...cloud, ...getLocalReels().map(localReelToCloud)];
+    return cloud;
   } catch (e) {
-    console.warn("Cloud reels unavailable, using local seed", e);
-    return getLocalReels().map(localReelToCloud);
+    console.warn("Cloud reels unavailable", e);
+    return [];
   }
 }
 
