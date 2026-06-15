@@ -1,21 +1,22 @@
-import { getMe, getUsers } from "@/lib/insta-data";
+import { useAuth } from "@/lib/auth-context";
 
 export function Stories() {
-  const me = getMe();
-  const users = getUsers();
-  const list = [me, ...users];
+  const { profile } = useAuth();
+  if (!profile) return null;
   return (
     <div className="flex gap-4 overflow-x-auto scrollbar-none px-4 py-4 border-b border-border">
-      {list.map((u, i) => (
-        <button key={u.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
-          <div className={`p-[2px] rounded-full ${i === 0 ? "bg-muted" : "bg-story-ring"}`}>
-            <div className="p-[2px] bg-background rounded-full">
-              <img src={u.avatar} alt={u.username} className="w-14 h-14 rounded-full object-cover bg-muted" />
-            </div>
+      <button className="flex flex-col items-center gap-1 shrink-0 w-16">
+        <div className="p-[2px] rounded-full bg-muted">
+          <div className="p-[2px] bg-background rounded-full">
+            <img
+              src={profile.avatar_url ?? `https://api.dicebear.com/9.x/avataaars/svg?seed=${profile.username}`}
+              alt={profile.username}
+              className="w-14 h-14 rounded-full object-cover bg-muted"
+            />
           </div>
-          <span className="text-xs truncate w-full text-center">{i === 0 ? "Your story" : u.username}</span>
-        </button>
-      ))}
+        </div>
+        <span className="text-xs truncate w-full text-center">Your story</span>
+      </button>
     </div>
   );
 }
