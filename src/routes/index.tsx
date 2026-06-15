@@ -26,7 +26,6 @@ function Home() {
     refetchOnReconnect: false,
     refetchInterval: false,
   });
-  const suggestions = getUsers().slice(0, 5);
 
   return (
     <InstaLayout>
@@ -37,21 +36,6 @@ function Home() {
             {posts.map((p) => <PostCard key={p.id} post={p} />)}
           </div>
         </div>
-        <aside className="hidden lg:block w-80 pt-10 pl-10">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Suggested for you</h3>
-          <ul className="space-y-3">
-            {suggestions.map((u) => (
-              <li key={u.id} className="flex items-center gap-3">
-                <img src={u.avatar} className="w-10 h-10 rounded-full bg-muted" alt={u.username} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{u.username}</div>
-                  <div className="text-xs text-muted-foreground truncate">Suggested for you</div>
-                </div>
-                <button className="text-xs font-semibold text-sky-400">Follow</button>
-              </li>
-            ))}
-          </ul>
-        </aside>
       </div>
     </InstaLayout>
   );
