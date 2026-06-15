@@ -17,7 +17,16 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { data: posts = [] } = useQuery({ queryKey: ["feed"], queryFn: fetchFeed });
+  const { data: posts = [] } = useQuery({
+    queryKey: ["feed"],
+    queryFn: fetchFeed,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+  });
   const suggestions = getUsers().slice(0, 5);
 
   return (
