@@ -4,7 +4,6 @@ import { InstaLayout } from "@/components/insta/Layout";
 import { Stories } from "@/components/insta/Stories";
 import { PostCard } from "@/components/insta/PostCard";
 import { fetchFeed } from "@/lib/insta-cloud";
-import { getUsers } from "@/lib/insta-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
