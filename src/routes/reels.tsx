@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { InstaLayout } from "@/components/insta/Layout";
 import { fetchReels, type CloudPost, fetchComments, addComment, deleteComment, type Comment } from "@/lib/insta-cloud";
 import { useAuth } from "@/lib/auth-context";
-import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX, Maximize2, Minimize2, X } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Play, Volume2, VolumeX, Maximize2, Minimize2, X, Save } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/reels")({
@@ -19,7 +19,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function ReelItem({ reel, muted, onToggleMute, dataSaver }: { reel: CloudPost; muted: boolean; onToggleMute: () => void; dataSaver: boolean }) {
+function ReelItem({ reel, muted, onToggleMute, dataSaver, onToggleDataSaver }: { reel: CloudPost; muted: boolean; onToggleMute: () => void; dataSaver: boolean; onToggleDataSaver: () => void }) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +97,9 @@ function ReelItem({ reel, muted, onToggleMute, dataSaver }: { reel: CloudPost; m
           </button>
         )}
         <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button onClick={onToggleDataSaver} className={`bg-black/40 rounded-full p-2 ${dataSaver ? "border border-sky-500" : ""}`} aria-label="data saver toggle">
+            <Save className="w-4 h-4 text-white" />
+          </button>
           <button onClick={() => setFitCover((v) => !v)} className="bg-black/40 rounded-full p-2" aria-label="fit toggle">
             {fitCover ? <Minimize2 className="w-4 h-4 text-white" /> : <Maximize2 className="w-4 h-4 text-white" />}
           </button>
@@ -251,7 +254,7 @@ function Reels() {
   */}
       <div ref={scrollerRef} className="snap-y-mandatory overflow-y-scroll scrollbar-none h-[calc(100dvh-3.5rem-3.5rem)] md:h-screen">
         {items.map((r) => (
-          <ReelItem key={r.id} reel={r} muted={muted} onToggleMute={() => setMuted((v) => !v)} dataSaver={dataSaver} />
+          <ReelItem key={r.id} reel={r} muted={muted} onToggleMute={() => setMuted((v) => !v)} dataSaver={dataSaver} onToggleDataSaver={() => setDataSaver((v) => !v)} />
         ))}
       </div>
     </InstaLayout>
